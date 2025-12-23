@@ -1,0 +1,49 @@
+model Role {
+  id           String    @id @default(cuid())
+  name         String    @unique
+  displayName  String
+  description  String?
+  scopeType    ScopeType
+  isPortalRole Boolean   @default(false)
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  users        User[]
+  permissions  RolePermission[]
+  invitations  Invitation[]
+
+  @@map("roles")
+}
+
+enum ScopeType {
+  UNLIMITED
+  CLIENT
+  SELF
+}
+
+model Permission {
+  id        String   @id @default(cuid())
+  resource  String
+  action    String
+
+  createdAt DateTime @default(now())
+
+  roles     RolePermission[]
+
+  @@unique([resource, action])
+  @@index([resource])
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}

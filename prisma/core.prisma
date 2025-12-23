@@ -1,0 +1,15 @@
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  isActive  Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Profile relations
+  affiliates    Affiliate[]
+  agents        AgentClient[]
+  clientAdmins  ClientAdminClient[]
+
+  @@map("clients")
+}

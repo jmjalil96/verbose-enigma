@@ -4,7 +4,7 @@ import "dotenv/config";
 
 export default defineConfig({
   earlyAccess: true,
-  schema: path.join(import.meta.dirname, "prisma", "schema.prisma"),
+  schema: path.join(import.meta.dirname, "prisma"),
   migrate: {
     adapter: async () => {
       const { PrismaPg } = await import("@prisma/adapter-pg");

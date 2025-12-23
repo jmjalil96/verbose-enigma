@@ -1,0 +1,79 @@
+model User {
+  id                    String    @id @default(cuid())
+  email                 String    @unique
+  emailVerifiedAt       DateTime?
+  passwordHash          String
+
+  roleId                String
+  sessionsInvalidBefore DateTime?
+  isActive              Boolean   @default(true)
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  role                  Role      @relation(fields: [roleId], references: [id])
+  sessions              Session[]
+  tokens                VerificationToken[]
+
+  // Profile relations (exactly one set based on role)
+  affiliate             Affiliate?
+  agent                 Agent?
+  employee              Employee?
+  clientAdmin           ClientAdmin?
+
+  // Invitations created by this user
+  createdInvitations    Invitation[]
+
+  // Audit logs for this user
+  auditLogs             AuditLog[]
+
+  @@index([email])
+  @@index([roleId])
+  @@map("users")
+}
+
+model Session {
+  id           String    @id @default(cuid())
+  userId       String
+
+  // store SHA-256 hash of the random cookie token
+  tokenHash    String    @unique
+
+  expiresAt    DateTime
+  revokedAt    DateTime?
+
+  ipAddress    String?
+  userAgent    String?
+
+  createdAt    DateTime  @default(now())
+  lastActiveAt DateTime  @default(now())
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  type      TokenType
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([expiresAt])
+  @@map("verification_tokens")
+}
+
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  MAGIC_LINK
+}

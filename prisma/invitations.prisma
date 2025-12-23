@@ -1,0 +1,33 @@
+model Invitation {
+  id        String  @id @default(cuid())
+  tokenHash String  @unique
+  email     String
+  roleId    String
+  role      Role    @relation(fields: [roleId], references: [id])
+
+  expiresAt  DateTime
+  acceptedAt DateTime?
+
+  // Exactly one of these set (enforced in app layer)
+  affiliateId   String?      @unique
+  affiliate     Affiliate?   @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  agentId       String?      @unique
+  agent         Agent?       @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  employeeId    String?      @unique
+  employee      Employee?    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  clientAdminId String?      @unique
+  clientAdmin   ClientAdmin? @relation(fields: [clientAdminId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+
+  @@index([email])
+  @@index([expiresAt])
+  @@index([roleId])
+  @@index([createdById])
+  @@map("invitations")
+}

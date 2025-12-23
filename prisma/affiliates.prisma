@@ -1,0 +1,69 @@
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  DIVORCED
+  WIDOWED
+  DOMESTIC_PARTNERSHIP
+}
+
+enum DependentRelationship {
+  SPOUSE
+  CHILD
+  PARENT
+  SIBLING
+  OTHER
+}
+
+model Affiliate {
+  id String @id @default(cuid())
+
+  // Identity
+  firstName      String
+  lastName       String
+  documentType   String?
+  documentNumber String?
+
+  // Contact
+  email String?
+  phone String?
+
+  // Demographics
+  dateOfBirth   DateTime?
+  gender        Gender?
+  maritalStatus MaritalStatus?
+
+  // Dependent relationship (global, single source of truth)
+  primaryAffiliateId String?
+  primaryAffiliate   Affiliate?  @relation("AffiliateDependents", fields: [primaryAffiliateId], references: [id], onDelete: SetNull)
+  dependents         Affiliate[] @relation("AffiliateDependents")
+
+  relationship DependentRelationship?
+
+  // Ownership
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+
+  // Optional portal access
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invitation Invitation?
+
+  @@index([clientId])
+  @@index([userId])
+  @@index([primaryAffiliateId])
+  @@index([documentNumber])
+  @@index([lastName, firstName])
+  @@index([isActive])
+  @@map("affiliates")
+}

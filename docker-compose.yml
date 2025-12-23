@@ -10,5 +10,19 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  inbucket:
+    image: inbucket/inbucket:latest
+    ports:
+      - "1025:2500"   # SMTP (internal 2500)
+      - "9000:9000"   # Web UI (internal 9000)
+
 volumes:
   postgres_data:
+  redis_data:

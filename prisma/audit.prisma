@@ -1,0 +1,48 @@
+model AuditLog {
+  id         String      @id @default(cuid())
+
+  // WHO
+  userId     String?
+  user       User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // WHAT
+  action     AuditAction
+  resource   String
+
+  // WHERE
+  resourceId String?
+
+  // CONTEXT
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  requestId  String?
+
+  // WHEN
+  createdAt  DateTime    @default(now())
+
+  @@index([userId])
+  @@index([resource, resourceId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+enum AuditAction {
+  // Auth
+  LOGIN
+  LOGOUT
+  LOGIN_FAILED
+  PASSWORD_CHANGED
+  PASSWORD_RESET_REQUESTED
+
+  // CRUD
+  CREATE
+  UPDATE
+  DELETE
+
+  // Business
+  INVITATION_SENT
+  INVITATION_ACCEPTED
+  ROLE_ASSIGNED
+}

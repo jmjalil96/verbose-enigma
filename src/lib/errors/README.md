@@ -23,15 +23,17 @@ app.get(
 
 ## Available errors
 
-| Class               | HTTP | `error.code`       |
-| ------------------- | ---- | ------------------ |
-| `BadRequestError`   | 400  | `BAD_REQUEST`      |
-| `ValidationError`   | 400  | `VALIDATION_ERROR` |
-| `UnauthorizedError` | 401  | `UNAUTHORIZED`     |
-| `ForbiddenError`    | 403  | `FORBIDDEN`        |
-| `NotFoundError`     | 404  | `NOT_FOUND`        |
-| `ConflictError`     | 409  | `CONFLICT`         |
-| `InternalError`     | 500  | `INTERNAL_ERROR`   |
+| Class                  | HTTP | `error.code`        |
+| ---------------------- | ---- | ------------------- |
+| `BadRequestError`      | 400  | `BAD_REQUEST`       |
+| `ValidationError`      | 400  | `VALIDATION_ERROR`  |
+| `UnauthorizedError`    | 401  | `UNAUTHORIZED`      |
+| `ForbiddenError`       | 403  | `FORBIDDEN`         |
+| `NotFoundError`        | 404  | `NOT_FOUND`         |
+| `RequestTimeoutError`  | 408  | `REQUEST_TIMEOUT`   |
+| `ConflictError`        | 409  | `CONFLICT`          |
+| `TooManyRequestsError` | 429  | `TOO_MANY_REQUESTS` |
+| `InternalError`        | 500  | `INTERNAL_ERROR`    |
 
 ## Async routes (`asyncHandler`)
 

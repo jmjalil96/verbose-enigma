@@ -32,6 +32,27 @@ const envSchema = z.object({
 
   // Database
   DATABASE_URL: z.url(),
+
+  // Auth
+  SESSION_COOKIE_NAME: z.string().default("session"),
+
+  // Redis (for job queue)
+  REDIS_URL: z.string().default("redis://localhost:6379"),
+
+  // Email
+  EMAIL_PROVIDER: z.enum(["smtp", "resend"]).default("smtp"),
+  EMAIL_FROM: z.string().default("noreply@example.com"),
+  SMTP_HOST: z.string().default("localhost"),
+  SMTP_PORT: z.coerce.number().default(1025),
+  RESEND_API_KEY: z.string().optional(),
+  APP_URL: z.url().default("http://localhost:3000"),
+
+  // Storage (Cloudflare R2)
+  R2_ACCOUNT_ID: z.string().min(1).optional(),
+  R2_ACCESS_KEY_ID: z.string().min(1).optional(),
+  R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  R2_BUCKET_NAME: z.string().min(1).optional(),
+  R2_PUBLIC_URL: z.string().min(1).optional(),
 });
 
 function parseEnv() {

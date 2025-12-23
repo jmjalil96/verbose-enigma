@@ -1,0 +1,111 @@
+// =============================================================================
+// Employee (Internal platform staff)
+// =============================================================================
+
+model Employee {
+  id String @id @default(cuid())
+
+  firstName  String
+  lastName   String
+  email      String  @unique
+  phone      String?
+  department String?
+
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invitation Invitation?
+
+  @@index([email])
+  @@index([isActive])
+  @@map("employees")
+}
+
+// =============================================================================
+// Agent (External brokers/agents)
+// =============================================================================
+
+model Agent {
+  id String @id @default(cuid())
+
+  firstName     String
+  lastName      String
+  email         String  @unique
+  phone         String?
+  licenseNumber String?
+  agencyName    String?
+
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clients    AgentClient[]
+  invitation Invitation?
+
+  @@index([email])
+  @@index([isActive])
+  @@map("agents")
+}
+
+model AgentClient {
+  agentId  String
+  clientId String
+
+  agent  Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+
+  @@id([agentId, clientId])
+  @@index([clientId])
+  @@map("agent_clients")
+}
+
+// =============================================================================
+// ClientAdmin (Client's own administrators)
+// =============================================================================
+
+model ClientAdmin {
+  id String @id @default(cuid())
+
+  firstName String
+  lastName  String
+  email     String  @unique
+  phone     String?
+  jobTitle  String?
+
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clients    ClientAdminClient[]
+  invitation Invitation?
+
+  @@index([email])
+  @@index([isActive])
+  @@map("client_admins")
+}
+
+model ClientAdminClient {
+  clientAdminId String
+  clientId      String
+
+  clientAdmin ClientAdmin @relation(fields: [clientAdminId], references: [id], onDelete: Cascade)
+  client      Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+
+  @@id([clientAdminId, clientId])
+  @@index([clientId])
+  @@map("client_admin_clients")
+}
