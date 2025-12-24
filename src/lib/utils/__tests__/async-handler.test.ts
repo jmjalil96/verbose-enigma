@@ -5,8 +5,8 @@ import { asyncHandler } from "../async-handler.js";
 describe("asyncHandler", () => {
   it("forwards rejected promise to next(err)", async () => {
     const err = new Error("boom");
-    const handler = asyncHandler(async () => {
-      throw err;
+    const handler = asyncHandler(() => {
+      return Promise.reject(err);
     });
 
     const next = vi.fn() as unknown as NextFunction;

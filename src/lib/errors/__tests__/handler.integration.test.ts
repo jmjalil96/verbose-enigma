@@ -8,25 +8,25 @@ describe("Error Handler", () => {
       const res = await request(app).get("/unknown-route");
 
       expect(res.status).toBe(404);
-      expect(res.body.error).toBeDefined();
-      expect(res.body.error.code).toBe("NOT_FOUND");
-      expect(res.body.error.message).toBe("Resource not found");
+      expect((res.body as { error: unknown }).error).toBeDefined();
+      expect((res.body as { error: { code: string } }).error.code).toBe("NOT_FOUND");
+      expect((res.body as { error: { message: string } }).error.message).toBe("Resource not found");
     });
 
     it("includes requestId in response", async () => {
       const res = await request(app).get("/unknown-route");
 
-      expect(res.body.requestId).toBeDefined();
-      expect(typeof res.body.requestId).toBe("string");
-      expect(res.body.requestId.length).toBeGreaterThan(0);
+      expect((res.body as { requestId: unknown }).requestId).toBeDefined();
+      expect(typeof (res.body as { requestId: string }).requestId).toBe("string");
+      expect((res.body as { requestId: string }).requestId.length).toBeGreaterThan(0);
     });
 
     it("includes errorId in response", async () => {
       const res = await request(app).get("/unknown-route");
 
-      expect(res.body.errorId).toBeDefined();
-      expect(typeof res.body.errorId).toBe("string");
-      expect(res.body.errorId.length).toBeGreaterThan(0);
+      expect((res.body as { errorId: unknown }).errorId).toBeDefined();
+      expect(typeof (res.body as { errorId: string }).errorId).toBe("string");
+      expect((res.body as { errorId: string }).errorId.length).toBeGreaterThan(0);
     });
   });
 
@@ -37,8 +37,8 @@ describe("Error Handler", () => {
         .send({ email: "not-an-email" }); // Missing password, invalid email
 
       expect(res.status).toBe(400);
-      expect(res.body.error.code).toBe("VALIDATION_ERROR");
-      expect(res.body.error.message).toBe("Validation failed");
+      expect((res.body as { error: { code: string } }).error.code).toBe("VALIDATION_ERROR");
+      expect((res.body as { error: { message: string } }).error.message).toBe("Validation failed");
     });
 
     it("includes details array with field paths prefixed with body.*", async () => {
@@ -46,12 +46,12 @@ describe("Error Handler", () => {
         .post("/api/auth/login")
         .send({ email: "not-an-email" });
 
-      expect(res.body.error.details).toBeDefined();
-      expect(Array.isArray(res.body.error.details)).toBe(true);
-      expect(res.body.error.details.length).toBeGreaterThan(0);
+      expect((res.body as { error: { details: unknown } }).error.details).toBeDefined();
+      expect(Array.isArray((res.body as { error: { details: unknown[] } }).error.details)).toBe(true);
+      expect((res.body as { error: { details: unknown[] } }).error.details.length).toBeGreaterThan(0);
 
       // Check that fields are prefixed with "body."
-      const fields = res.body.error.details.map(
+      const fields = (res.body as { error: { details: { field: string }[] } }).error.details.map(
         (d: { field: string }) => d.field
       );
       expect(fields.some((f: string) => f.startsWith("body."))).toBe(true);
@@ -60,8 +60,8 @@ describe("Error Handler", () => {
     it("includes validation error details with field, message, and code", async () => {
       const res = await request(app).post("/api/auth/login").send({});
 
-      expect(res.body.error.details).toBeDefined();
-      const detail = res.body.error.details[0];
+      expect((res.body as { error: { details: unknown } }).error.details).toBeDefined();
+      const detail = (res.body as { error: { details: unknown[] } }).error.details[0];
       expect(detail).toHaveProperty("field");
       expect(detail).toHaveProperty("message");
       expect(detail).toHaveProperty("code");
@@ -100,7 +100,7 @@ describe("Error Handler", () => {
         .get("/unknown-route")
         .set("X-Request-Id", customRequestId);
 
-      expect(res.body.requestId).toBe(customRequestId);
+      expect((res.body as { requestId: string }).requestId).toBe(customRequestId);
     });
   });
 
@@ -109,21 +109,21 @@ describe("Error Handler", () => {
       const res = await request(app).get("/api/health");
 
       expect(res.status).toBe(200);
-      expect(res.body.status).toBe("ok");
+      expect((res.body as { status: string }).status).toBe("ok");
     });
 
     it("GET /live returns 200 with status ok", async () => {
       const res = await request(app).get("/live");
 
       expect(res.status).toBe(200);
-      expect(res.body.status).toBe("ok");
+      expect((res.body as { status: string }).status).toBe("ok");
     });
 
     it("GET /ready returns 200 when database is available", async () => {
       const res = await request(app).get("/ready");
 
       expect(res.status).toBe(200);
-      expect(res.body.status).toBe("ok");
+      expect((res.body as { status: string }).status).toBe("ok");
     });
   });
 });

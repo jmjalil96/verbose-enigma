@@ -3,8 +3,10 @@ export {
   downloadStream,
   downloadBuffer,
   deleteFile,
+  copyFile,
   getSignedUploadUrl,
   getSignedDownloadUrl,
+  headObject,
 } from "./service.js";
 export { getMimeType } from "./utils.js";
 export type {
@@ -12,4 +14,5 @@ export type {
   UploadOptions,
   SignedUrlOptions,
   SignedUploadOptions,
+  CopyOptions,
 } from "./types.js";

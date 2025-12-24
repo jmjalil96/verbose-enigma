@@ -45,7 +45,12 @@ export function validate(schema: RequestSchema): RequestHandler {
           })),
         );
       } else {
-        req.query = result.data as typeof req.query;
+        Object.defineProperty(req, "query", {
+          value: result.data,
+          writable: true,
+          configurable: true,
+          enumerable: true,
+        });
       }
     }
 
@@ -59,7 +64,12 @@ export function validate(schema: RequestSchema): RequestHandler {
           })),
         );
       } else {
-        req.params = result.data as typeof req.params;
+        Object.defineProperty(req, "params", {
+          value: result.data,
+          writable: true,
+          configurable: true,
+          enumerable: true,
+        });
       }
     }
 

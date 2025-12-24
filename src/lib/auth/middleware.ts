@@ -12,6 +12,7 @@ import {
   shouldUpdateLastActive,
   validateSession,
 } from "./service.js";
+import type { SessionUser } from "./types.js";
 
 export function requireAuth(): RequestHandler {
   return async (req, res, next) => {
@@ -74,6 +75,30 @@ export function requirePermissions(
 
     if (missing.length > 0) {
       req.log.debug({ required: requiredList, missing }, "Permission denied");
+      next(new ForbiddenError());
+      return;
+    }
+
+    next();
+  };
+}
+
+export function requireScope(
+  allowed: SessionUser["role"]["scopeType"] | SessionUser["role"]["scopeType"][],
+): RequestHandler {
+  const allowedList = Array.isArray(allowed) ? allowed : [allowed];
+
+  return (req, _res, next) => {
+    if (!req.user) {
+      next(new UnauthorizedError("Authentication required"));
+      return;
+    }
+
+    if (!allowedList.includes(req.user.role.scopeType)) {
+      req.log.debug(
+        { allowed: allowedList, actual: req.user.role.scopeType },
+        "Scope denied",
+      );
       next(new ForbiddenError());
       return;
     }

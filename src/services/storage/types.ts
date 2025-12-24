@@ -16,3 +16,8 @@ export interface SignedUrlOptions {
 export interface SignedUploadOptions extends SignedUrlOptions {
   contentType: string;
 }
+
+export interface CopyOptions {
+  sourceKey: string;
+  destinationKey: string;
+}

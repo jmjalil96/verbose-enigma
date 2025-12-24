@@ -1,1 +1,5 @@
-export { sendInviteEmail, sendPasswordResetEmail } from "./handlers/index.js";
+export {
+  sendClaimCreatedEmail,
+  sendInviteEmail,
+  sendPasswordResetEmail,
+} from "./handlers/index.js";

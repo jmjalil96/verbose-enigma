@@ -13,8 +13,8 @@ import {
 const { enqueueMock } = vi.hoisted(() => ({
   enqueueMock: vi.fn().mockResolvedValue(undefined),
 }));
-vi.mock("../../../lib/jobs/index.js", async () => {
-  const actual = await vi.importActual<any>("../../../lib/jobs/index.js");
+vi.mock("../../../lib/jobs/index.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../lib/jobs/index.js")>();
   return { ...actual, enqueue: enqueueMock };
 });
 
@@ -50,9 +50,9 @@ describe("Auth - sessions", () => {
     const setCookie = res.headers["set-cookie"];
     expect(Array.isArray(setCookie)).toBe(true);
     expect(setCookie?.[0]).toContain("session=");
-    expect(res.body.user).toBeDefined();
-    expect(res.body.user.id).toBe(user.id);
-    expect(typeof res.body.expiresAt).toBe("string");
+    expect((res.body as { user: { id: string } }).user).toBeDefined();
+    expect((res.body as { user: { id: string } }).user.id).toBe(user.id);
+    expect(typeof (res.body as { expiresAt: string }).expiresAt).toBe("string");
   });
 
   it("POST /api/auth/login returns 401 for unknown email", async () => {
@@ -61,8 +61,8 @@ describe("Auth - sessions", () => {
       .send({ email: `${prefix}-unknown@example.com`, password });
 
     expect(res.status).toBe(401);
-    expect(res.body.error.code).toBe("UNAUTHORIZED");
-    expect(res.body.error.message).toBe("Invalid credentials");
+    expect((res.body as { error: { code: string } }).error.code).toBe("UNAUTHORIZED");
+    expect((res.body as { error: { message: string } }).error.message).toBe("Invalid credentials");
   });
 
   it("POST /api/auth/login returns 401 for bad password", async () => {
@@ -71,7 +71,7 @@ describe("Auth - sessions", () => {
       .send({ email: user.email, password: "wrong-password" });
 
     expect(res.status).toBe(401);
-    expect(res.body.error.code).toBe("UNAUTHORIZED");
+    expect((res.body as { error: { code: string } }).error.code).toBe("UNAUTHORIZED");
   });
 
   it("POST /api/auth/login returns 401 for inactive user", async () => {
@@ -87,13 +87,13 @@ describe("Auth - sessions", () => {
       .send({ email: inactive.email, password });
 
     expect(res.status).toBe(401);
-    expect(res.body.error.code).toBe("UNAUTHORIZED");
+    expect((res.body as { error: { code: string } }).error.code).toBe("UNAUTHORIZED");
   });
 
   it("GET /api/auth/me returns 401 when unauthenticated", async () => {
     const res = await request(app).get("/api/auth/me");
     expect(res.status).toBe(401);
-    expect(res.body.error.code).toBe("UNAUTHORIZED");
+    expect((res.body as { error: { code: string } }).error.code).toBe("UNAUTHORIZED");
   });
 
   it("GET /api/auth/me returns user info when authenticated and omits session", async () => {
@@ -107,8 +107,8 @@ describe("Auth - sessions", () => {
     const meRes = await agent.get("/api/auth/me");
     expect(meRes.status).toBe(200);
     expect(meRes.headers["cache-control"]).toContain("no-store");
-    expect(meRes.body.id).toBe(user.id);
-    expect(meRes.body.email).toBe(user.email);
+    expect((meRes.body as { id: string }).id).toBe(user.id);
+    expect((meRes.body as { email: string }).email).toBe(user.email);
     expect(meRes.body).not.toHaveProperty("session");
   });
 

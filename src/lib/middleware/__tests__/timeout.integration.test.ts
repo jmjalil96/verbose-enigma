@@ -24,10 +24,10 @@ describe("timeoutMiddleware", () => {
     const res = await request(app).get("/slow");
 
     expect(res.status).toBe(408);
-    expect(res.body.error).toBeDefined();
-    expect(res.body.error.code).toBe("REQUEST_TIMEOUT");
-    expect(res.body.requestId).toBeDefined();
-    expect(res.body.errorId).toBeDefined();
+    expect((res.body as { error?: unknown }).error).toBeDefined();
+    expect((res.body as { error: { code: string } }).error.code).toBe("REQUEST_TIMEOUT");
+    expect((res.body as { requestId?: unknown }).requestId).toBeDefined();
+    expect((res.body as { errorId?: unknown }).errorId).toBeDefined();
   });
 });
 

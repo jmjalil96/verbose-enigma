@@ -34,12 +34,12 @@ describe("jobs queue", () => {
     expect(mockQueueCtor).toHaveBeenCalledWith(
       "jobs",
       expect.objectContaining({
-        connection: expect.objectContaining({ __conn: true }),
+        connection: expect.objectContaining({ __conn: true }) as unknown,
         defaultJobOptions: expect.objectContaining({
           attempts: 3,
-          backoff: expect.objectContaining({ type: "exponential", delay: 1000 }),
-        }),
-      }),
+          backoff: expect.objectContaining({ type: "exponential", delay: 1000 }) as unknown,
+        }) as unknown,
+      }) as unknown,
     );
     expect(mockAdd).toHaveBeenCalledTimes(2);
   });

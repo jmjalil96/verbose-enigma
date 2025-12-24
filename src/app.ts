@@ -1,5 +1,6 @@
 import express, { type Request, type Response } from "express";
 import { authRouter } from "./features/auth/index.js";
+import { claimsRouter } from "./features/claims/index.js";
 import { errorHandler, notFoundHandler } from "./lib/errors/index.js";
 import { applyMiddleware } from "./lib/middleware/index.js";
 import { db } from "./lib/db.js";
@@ -30,6 +31,7 @@ app.get("/ready", (_req: Request, res: Response) => {
 });
 
 app.use("/api/auth", authRouter);
+app.use("/api/claims", claimsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

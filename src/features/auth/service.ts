@@ -6,17 +6,31 @@ import {
   BadRequestError,
   ConflictError,
   NotFoundError,
+  UnauthorizedError,
 } from "../../lib/errors/index.js";
+import { enqueue, JobType } from "../../lib/jobs/index.js";
 import {
+  acceptInvitationTransaction,
+  createPasswordResetTokenTransaction,
   createSession,
   findAffiliateById,
   findAgentById,
   findClientAdminById,
   findEmployeeById,
+  findInvitationById,
+  findInvitationByTokenHash,
   findRoleById,
   findUserByEmail,
+  findVerificationToken,
+  InvitationAlreadyAcceptedError,
+  isEmailInUse,
+  ProfileAlreadyLinkedError,
+  resetPasswordTransaction,
+  rotateInvitationToken,
+  TokenAlreadyUsedError,
+  upsertInvitation,
 } from "./repository.js";
-import type { CreateInvitationBody } from "./schemas.js";
+import type { AcceptInvitationBody, CreateInvitationBody } from "./schemas.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -285,4 +299,348 @@ export function buildAcceptResponse(user: AcceptedUser) {
 
 export function shouldLogToken(): boolean {
   return env.NODE_ENV !== "production";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Use Cases
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface LoginResult {
+  token: string;
+  expiresAt: Date;
+  user: UserWithRole;
+}
+
+export async function loginUseCase(
+  email: string,
+  password: string,
+  ipAddress?: string,
+  userAgent?: string,
+): Promise<LoginResult> {
+  const normalizedEmail = normalizeEmail(email);
+  const user = await findUserByEmail(normalizedEmail);
+
+  // Timing-safe: always verify even if user not found
+  if (!user) {
+    await verifyPassword(password, DUMMY_HASH);
+    throw new UnauthorizedError("Invalid credentials");
+  }
+
+  const valid = await verifyPassword(password, user.passwordHash);
+
+  if (!user.isActive || !valid) {
+    throw new UnauthorizedError("Invalid credentials");
+  }
+
+  const { token, expiresAt } = await createUserSession(
+    user.id,
+    ipAddress,
+    userAgent,
+  );
+
+  return { token, expiresAt, user };
+}
+
+export interface ValidateInvitationResult {
+  expiresAt: Date;
+  role: { displayName: string };
+}
+
+export async function validateInvitationUseCase(
+  token: string,
+): Promise<ValidateInvitationResult> {
+  const tokenHash = hashToken(token);
+  const invitation = await findInvitationByTokenHash(tokenHash);
+
+  if (
+    !invitation ||
+    invitation.acceptedAt ||
+    invitation.expiresAt <= new Date()
+  ) {
+    throw new NotFoundError("Invalid or expired invitation");
+  }
+
+  return {
+    expiresAt: invitation.expiresAt,
+    role: { displayName: invitation.role.displayName },
+  };
+}
+
+export interface AcceptInvitationResult {
+  sessionToken: string;
+  sessionExpiresAt: Date;
+  user: {
+    id: string;
+    email: string;
+    emailVerifiedAt: Date | null;
+    role: {
+      id: string;
+      name: string;
+      scopeType: string;
+      permissions: { permission: { resource: string; action: string } }[];
+    };
+  };
+  invitationId: string;
+}
+
+export async function acceptInvitationUseCase(
+  body: AcceptInvitationBody,
+  ipAddress?: string,
+  userAgent?: string,
+): Promise<AcceptInvitationResult> {
+  const tokenHash = hashToken(body.token);
+  const invitation = await findInvitationByTokenHash(tokenHash);
+
+  if (
+    !invitation ||
+    invitation.acceptedAt ||
+    invitation.expiresAt <= new Date()
+  ) {
+    throw new NotFoundError("Invalid or expired invitation");
+  }
+
+  const email = normalizeEmail(invitation.email);
+
+  // Pre-transaction email check
+  if (await isEmailInUse(email)) {
+    throw new ConflictError("Email already in use");
+  }
+
+  const passwordHash = await hashPassword(body.password);
+  const { type: profileType, id: profileId } =
+    getProfileTypeFromInvitation(invitation);
+
+  const sessionToken = generateInviteToken();
+  const sessionTokenHash = hashToken(sessionToken);
+  const sessionExpiresAt = getSessionExpiry();
+
+  try {
+    const { user } = await acceptInvitationTransaction({
+      invitationId: invitation.id,
+      email,
+      passwordHash,
+      roleId: invitation.roleId,
+      profileType,
+      profileId,
+      sessionTokenHash,
+      sessionExpiresAt,
+      ipAddress,
+      userAgent,
+    });
+
+    return {
+      sessionToken,
+      sessionExpiresAt,
+      user,
+      invitationId: invitation.id,
+    };
+  } catch (err) {
+    if (err instanceof InvitationAlreadyAcceptedError) {
+      throw new NotFoundError("Invalid or expired invitation");
+    }
+    if (err instanceof ProfileAlreadyLinkedError) {
+      throw new ConflictError("Profile already has a user account");
+    }
+    throw err;
+  }
+}
+
+export interface CreateInvitationResult {
+  invitationId: string;
+  token: string;
+  expiresAt: Date;
+  profileType: ProfileType;
+  profileId: string;
+}
+
+export async function createInvitationUseCase(
+  creatorId: string,
+  body: CreateInvitationBody,
+): Promise<CreateInvitationResult> {
+  const { roleId, email } = body;
+
+  await validateRoleExists(roleId);
+
+  const { type, id } = getProfileType(body);
+  const profile = await findProfileById(type, id);
+
+  if (!profile) {
+    throw new NotFoundError("Profile not found");
+  }
+
+  const inviteEmail = validateProfileForInvite(profile, type, email);
+
+  if (await isEmailInUse(inviteEmail)) {
+    throw new ConflictError("Email already in use");
+  }
+
+  const token = generateInviteToken();
+  const tokenHash = hashToken(token);
+  const expiresAt = getInviteExpiry();
+
+  const invitation = await upsertInvitation({
+    tokenHash,
+    email: inviteEmail,
+    roleId,
+    expiresAt,
+    profileType: type,
+    profileId: id,
+    createdById: creatorId,
+  });
+
+  await enqueue(
+    JobType.EMAIL_SEND_INVITE,
+    { invitationId: invitation.id, token },
+    { jobId: `invite-email:${invitation.id}` },
+  );
+
+  return {
+    invitationId: invitation.id,
+    token,
+    expiresAt,
+    profileType: type,
+    profileId: id,
+  };
+}
+
+export interface ResendInvitationResult {
+  invitationId: string;
+  token: string;
+  expiresAt: Date;
+}
+
+export async function resendInvitationUseCase(
+  invitationId: string,
+): Promise<ResendInvitationResult> {
+  const invitation = await findInvitationById(invitationId);
+
+  if (!invitation) {
+    throw new NotFoundError("Invitation not found");
+  }
+
+  if (invitation.acceptedAt) {
+    throw new ConflictError("Invitation already accepted");
+  }
+
+  const token = generateInviteToken();
+  const tokenHash = hashToken(token);
+  const expiresAt = getInviteExpiry();
+
+  const result = await rotateInvitationToken(invitationId, {
+    tokenHash,
+    expiresAt,
+  });
+
+  // Race condition: already accepted between check and update
+  if (result.count === 0) {
+    throw new ConflictError("Invitation already accepted");
+  }
+
+  await enqueue(
+    JobType.EMAIL_SEND_INVITE,
+    { invitationId, token },
+    { jobId: `invite-email:${invitationId}:${String(Date.now())}` },
+  );
+
+  return { invitationId, token, expiresAt };
+}
+
+export interface RequestPasswordResetResult {
+  userId?: string;
+  token?: string;
+}
+
+export async function requestPasswordResetUseCase(
+  email: string,
+): Promise<RequestPasswordResetResult> {
+  const normalizedEmail = normalizeEmail(email);
+  const user = await findUserByEmail(normalizedEmail);
+
+  // Timing-safe: always do work when user not found or inactive
+  if (!user?.isActive) {
+    await hashPassword("dummy-timing-safe-work");
+    return {};
+  }
+
+  const token = generateResetToken();
+  const tokenHash = hashToken(token);
+  const expiresAt = getPasswordResetExpiry();
+
+  await createPasswordResetTokenTransaction({
+    userId: user.id,
+    tokenHash,
+    expiresAt,
+  });
+
+  await enqueue(
+    JobType.EMAIL_SEND_PASSWORD_RESET,
+    { userId: user.id, token },
+    { jobId: `password-reset:${user.id}:${String(Date.now())}` },
+  );
+
+  return { userId: user.id, token };
+}
+
+export interface ValidateResetTokenResult {
+  expiresAt: Date;
+}
+
+export async function validateResetTokenUseCase(
+  token: string,
+): Promise<ValidateResetTokenResult> {
+  const tokenHash = hashToken(token);
+  const verificationToken = await findVerificationToken(
+    tokenHash,
+    "PASSWORD_RESET",
+  );
+
+  if (
+    !verificationToken ||
+    verificationToken.usedAt ||
+    verificationToken.expiresAt <= new Date()
+  ) {
+    throw new NotFoundError("Invalid or expired token");
+  }
+
+  return { expiresAt: verificationToken.expiresAt };
+}
+
+export interface ConfirmPasswordResetResult {
+  userId: string;
+}
+
+export async function confirmPasswordResetUseCase(
+  token: string,
+  newPassword: string,
+): Promise<ConfirmPasswordResetResult> {
+  const tokenHash = hashToken(token);
+  const verificationToken = await findVerificationToken(
+    tokenHash,
+    "PASSWORD_RESET",
+  );
+
+  if (
+    !verificationToken ||
+    verificationToken.usedAt ||
+    verificationToken.expiresAt <= new Date()
+  ) {
+    throw new NotFoundError("Invalid or expired token");
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+
+  try {
+    await resetPasswordTransaction({
+      tokenId: verificationToken.id,
+      userId: verificationToken.userId,
+      passwordHash,
+    });
+  } catch (err) {
+    if (err instanceof TokenAlreadyUsedError) {
+      throw new NotFoundError("Invalid or expired token");
+    }
+    throw err;
+  }
+
+  return { userId: verificationToken.userId };
 }

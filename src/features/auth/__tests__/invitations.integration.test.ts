@@ -12,8 +12,8 @@ import {
 const { enqueueMock } = vi.hoisted(() => ({
   enqueueMock: vi.fn().mockResolvedValue(undefined),
 }));
-vi.mock("../../../lib/jobs/index.js", async () => {
-  const actual = await vi.importActual<any>("../../../lib/jobs/index.js");
+vi.mock("../../../lib/jobs/index.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../lib/jobs/index.js")>();
   return { ...actual, enqueue: enqueueMock };
 });
 
@@ -66,7 +66,7 @@ describe("Auth - invitations", () => {
     });
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe("FORBIDDEN");
+    expect((res.body as { error: { code: string } }).error.code).toBe("FORBIDDEN");
   });
 
   it("Create → validate → accept invitation (happy path)", async () => {
@@ -81,29 +81,29 @@ describe("Auth - invitations", () => {
     });
 
     expect(createRes.status).toBe(201);
-    expect(createRes.body.invitationId).toBeDefined();
-    expect(typeof createRes.body.expiresAt).toBe("string");
+    expect((createRes.body as { invitationId: string }).invitationId).toBeDefined();
+    expect(typeof (createRes.body as { expiresAt: string }).expiresAt).toBe("string");
     expect(enqueueMock).toHaveBeenCalledTimes(1);
 
-    const enqueueArgs = enqueueMock.mock.calls[0];
-    const payload = enqueueArgs?.[1] as { invitationId: string; token: string };
-    expect(payload.invitationId).toBe(createRes.body.invitationId);
+    const enqueueArgs = enqueueMock.mock.calls[0] as unknown[];
+    const payload = enqueueArgs[1] as { invitationId: string; token: string };
+    expect(payload.invitationId).toBe((createRes.body as { invitationId: string }).invitationId);
     expect(typeof payload.token).toBe("string");
 
     const token = payload.token;
 
     const validateRes = await request(app).get(`/api/auth/invitations/${token}`);
     expect(validateRes.status).toBe(200);
-    expect(validateRes.body.expiresAt).toBeDefined();
-    expect(validateRes.body.role?.displayName).toBeDefined();
+    expect((validateRes.body as { expiresAt: string }).expiresAt).toBeDefined();
+    expect((validateRes.body as { role?: { displayName: string } }).role?.displayName).toBeDefined();
 
     const acceptRes = await request(app)
       .post("/api/auth/invitations/accept")
       .send({ token, password: "NewPassword123!" });
     expect(acceptRes.status).toBe(200);
     expect(acceptRes.headers["set-cookie"]).toBeDefined();
-    expect(acceptRes.body.user).toBeDefined();
-    expect(acceptRes.body.user.role.id).toBe(inviteeRole.id);
+    expect((acceptRes.body as { user: { role: { id: string } } }).user).toBeDefined();
+    expect((acceptRes.body as { user: { role: { id: string } } }).user.role.id).toBe(inviteeRole.id);
 
     // Token should now be invalid/expired
     const validateAgain = await request(app).get(`/api/auth/invitations/${token}`);
@@ -128,7 +128,7 @@ describe("Auth - invitations", () => {
     });
     expect(createRes.status).toBe(201);
 
-    const firstPayload = enqueueMock.mock.calls[0]?.[1] as {
+    const firstPayload = (enqueueMock.mock.calls[0] as unknown[])[1] as {
       invitationId: string;
       token: string;
     };
@@ -139,7 +139,7 @@ describe("Auth - invitations", () => {
     expect(resendRes.status).toBe(200);
     expect(enqueueMock).toHaveBeenCalledTimes(2);
 
-    const secondPayload = enqueueMock.mock.calls[1]?.[1] as {
+    const secondPayload = (enqueueMock.mock.calls[1] as unknown[])[1] as {
       invitationId: string;
       token: string;
     };

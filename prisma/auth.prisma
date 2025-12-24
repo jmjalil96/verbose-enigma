@@ -27,6 +27,19 @@ model User {
   // Audit logs for this user
   auditLogs             AuditLog[]
 
+  // Claims
+  claimsCreated        Claim[]        @relation("ClaimCreator")
+  claimsUpdated        Claim[]        @relation("ClaimUpdater")
+  claimHistoryCreated  ClaimHistory[] @relation("ClaimHistoryCreator")
+  claimInvoicesCreated ClaimInvoice[] @relation("ClaimInvoiceCreator")
+
+  // Policies
+  policyHistoryCreated PolicyHistory[] @relation("PolicyHistoryCreator")
+
+  // Claim Files
+  pendingClaimFiles PendingClaimFile[] @relation("PendingClaimFileOwner")
+  claimFilesCreated ClaimFile[]        @relation("ClaimFileCreator")
+
   @@index([email])
   @@index([roleId])
   @@map("users")

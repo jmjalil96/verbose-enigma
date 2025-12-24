@@ -3,6 +3,8 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
+  CopyObjectCommand,
+  HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getClient, getBucket } from "./client.js";
@@ -12,6 +14,7 @@ import type {
   SignedUploadUrl,
   SignedUrlOptions,
   SignedUploadOptions,
+  CopyOptions,
 } from "./types.js";
 
 const log = createModuleLogger("storage");
@@ -99,6 +102,27 @@ export async function deleteFile(key: string): Promise<void> {
 }
 
 /**
+ * Copy a file within the same bucket.
+ */
+export async function copyFile(options: CopyOptions): Promise<void> {
+  const client = getClient();
+  const bucket = getBucket();
+
+  await client.send(
+    new CopyObjectCommand({
+      Bucket: bucket,
+      CopySource: `${bucket}/${options.sourceKey}`,
+      Key: options.destinationKey,
+    }),
+  );
+
+  log.debug(
+    { sourceKey: options.sourceKey, destinationKey: options.destinationKey },
+    "File copied",
+  );
+}
+
+/**
  * Generate a presigned URL for direct browser upload.
  * Client must send the returned headers exactly.
  */
@@ -150,4 +174,28 @@ export async function getSignedDownloadUrl(
   log.debug({ key, expiresIn }, "Signed download URL generated");
 
   return url;
+}
+
+/**
+ * Check if an object exists in storage.
+ * Returns true if object exists, false if not found.
+ */
+export async function headObject(key: string): Promise<boolean> {
+  const client = getClient();
+  const bucket = getBucket();
+
+  try {
+    await client.send(
+      new HeadObjectCommand({
+        Bucket: bucket,
+        Key: key,
+      }),
+    );
+    return true;
+  } catch (err) {
+    if ((err as { name?: string }).name === "NotFound") {
+      return false;
+    }
+    throw err;
+  }
 }

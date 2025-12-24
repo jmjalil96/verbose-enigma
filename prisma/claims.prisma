@@ -1,0 +1,177 @@
+enum ClaimStatus {
+  DRAFT
+  SUBMITTED
+  IN_REVIEW
+  PENDING_INFO
+  RETURNED
+  CANCELLED
+  SETTLED
+}
+
+enum CareType {
+  AMBULATORY
+  HOSPITALARY
+  OTHER
+}
+
+enum ClaimFileStatus {
+  PENDING
+  READY
+  FAILED
+}
+
+enum ClaimFileType {
+  INVOICE
+  RECEIPT
+  MEDICAL_REPORT
+  PRESCRIPTION
+  ID_DOCUMENT
+  OTHER
+}
+
+model Claim {
+  id          String @id @default(cuid())
+  claimNumber Int    @unique
+
+  policyId    String?
+  policy      Policy?   @relation(fields: [policyId], references: [id])
+  affiliateId String
+  affiliate   Affiliate @relation("ClaimAffiliate", fields: [affiliateId], references: [id])
+  patientId   String
+  patient     Affiliate @relation("ClaimPatient", fields: [patientId], references: [id])
+  clientId    String
+  client      Client    @relation(fields: [clientId], references: [id])
+
+  status      ClaimStatus @default(DRAFT)
+  description String
+
+  careType  CareType?
+  diagnosis String?
+
+  amountSubmitted   Decimal? @db.Decimal(12, 2)
+  amountApproved    Decimal? @db.Decimal(12, 2)
+  amountDenied      Decimal? @db.Decimal(12, 2)
+  amountUnprocessed Decimal? @db.Decimal(12, 2)
+  deductibleApplied Decimal? @db.Decimal(12, 2)
+  copayApplied      Decimal? @db.Decimal(12, 2)
+
+  incidentDate   DateTime? @db.Date
+  submittedDate  DateTime? @db.Date
+  settlementDate DateTime? @db.Date
+
+  businessDays     Int?
+  settlementNumber String?
+  settlementNotes  String?
+
+  createdById String
+  createdBy   User   @relation("ClaimCreator", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   User?  @relation("ClaimUpdater", fields: [updatedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoices ClaimInvoice[]
+  history  ClaimHistory[]
+  files    ClaimFile[]
+
+  @@index([policyId])
+  @@index([affiliateId])
+  @@index([patientId])
+  @@index([clientId])
+  @@index([status])
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([submittedDate])
+  @@index([settlementDate])
+  @@index([createdAt])
+  @@map("claims")
+}
+
+model ClaimHistory {
+  id      String @id @default(cuid())
+  claimId String
+  claim   Claim  @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  fromStatus ClaimStatus?
+  toStatus   ClaimStatus
+  reason     String?
+  notes      String?
+
+  createdById String
+  createdBy   User     @relation("ClaimHistoryCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([claimId])
+  @@index([createdById])
+  @@index([createdAt])
+  @@map("claim_history")
+}
+
+model ClaimInvoice {
+  id      String @id @default(cuid())
+  claimId String
+  claim   Claim  @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  invoiceNumber   String
+  providerName    String
+  amountSubmitted Decimal @db.Decimal(12, 2)
+
+  createdById String
+  createdBy   User     @relation("ClaimInvoiceCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([claimId])
+  @@index([createdById])
+  @@map("claim_invoices")
+}
+
+model PendingClaimFile {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("PendingClaimFileOwner", fields: [userId], references: [id], onDelete: Cascade)
+
+  sessionKey  String
+  fileType    ClaimFileType
+  fileName    String
+  fileKey     String        @unique
+  fileSize    Int
+  contentType String
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId, sessionKey])
+  @@index([expiresAt])
+  @@map("pending_claim_files")
+}
+
+model ClaimFile {
+  id      String @id @default(cuid())
+  claimId String
+  claim   Claim  @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  fileType    ClaimFileType
+  fileName    String
+  fileSize    Int
+  contentType String
+
+  sourceKey    String
+  targetKey    String?
+  status       ClaimFileStatus @default(PENDING)
+  errorMessage String?
+  migratedAt   DateTime?
+
+  deletedAt DateTime?
+
+  createdById String
+  createdBy   User     @relation("ClaimFileCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([claimId])
+  @@index([status])
+  @@index([createdById])
+  @@index([deletedAt])
+  @@map("claim_files")
+}

@@ -98,8 +98,8 @@ describe("Auth Middleware", () => {
       const res = await request(app).get("/api/auth/me");
 
       expect(res.status).toBe(401);
-      expect(res.body.error.code).toBe("UNAUTHORIZED");
-      expect(res.body.error.message).toBe("Authentication required");
+      expect((res.body as { error: { code: string } }).error.code).toBe("UNAUTHORIZED");
+      expect((res.body as { error: { message: string } }).error.message).toBe("Authentication required");
     });
 
     it("returns 401 and clears cookie for invalid session token", async () => {
@@ -108,10 +108,10 @@ describe("Auth Middleware", () => {
         .set("Cookie", "session=invalid-token-that-does-not-exist");
 
       expect(res.status).toBe(401);
-      expect(res.body.error.code).toBe("UNAUTHORIZED");
+      expect((res.body as { error: { code: string } }).error.code).toBe("UNAUTHORIZED");
 
       // Check cookie is cleared
-      const cookies = res.headers["set-cookie"];
+      const cookies = res.headers["set-cookie"] as unknown as string[];
       expect(cookies).toBeDefined();
       expect(
         cookies.some(
@@ -137,7 +137,7 @@ describe("Auth Middleware", () => {
         .set("Cookie", `session=${token}`);
 
       expect(res.status).toBe(401);
-      expect(res.body.error.code).toBe("UNAUTHORIZED");
+      expect((res.body as { error: { code: string } }).error.code).toBe("UNAUTHORIZED");
     });
 
     it("returns 401 for revoked session", async () => {
@@ -156,7 +156,7 @@ describe("Auth Middleware", () => {
         .set("Cookie", `session=${token}`);
 
       expect(res.status).toBe(401);
-      expect(res.body.error.code).toBe("UNAUTHORIZED");
+      expect((res.body as { error: { code: string } }).error.code).toBe("UNAUTHORIZED");
     });
 
     it("returns 401 for inactive user", async () => {
@@ -184,7 +184,7 @@ describe("Auth Middleware", () => {
         .set("Cookie", `session=${token}`);
 
       expect(res.status).toBe(401);
-      expect(res.body.error.code).toBe("UNAUTHORIZED");
+      expect((res.body as { error: { code: string } }).error.code).toBe("UNAUTHORIZED");
     });
 
     it("returns 200 with user data for valid session", async () => {
@@ -202,8 +202,8 @@ describe("Auth Middleware", () => {
         .set("Cookie", `session=${token}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.id).toBe(testUser.id);
-      expect(res.body.email).toBe(testUser.email);
+      expect((res.body as { id: string }).id).toBe(testUser.id);
+      expect((res.body as { email: string }).email).toBe(testUser.email);
     });
   });
 
@@ -226,7 +226,7 @@ describe("Auth Middleware", () => {
         .send({ roleId: testRole.id, employeeId: "emp-123" });
 
       expect(res.status).toBe(403);
-      expect(res.body.error.code).toBe("FORBIDDEN");
+      expect((res.body as { error: { code: string } }).error.code).toBe("FORBIDDEN");
     });
 
     it("returns 200 when user has required permission", async () => {
@@ -258,6 +258,118 @@ describe("Auth Middleware", () => {
         .send({ roleId: testRole.id, employeeId: "emp-123" });
 
       // Should not be auth/permission error
+      expect(res.status).not.toBe(401);
+      expect(res.status).not.toBe(403);
+    });
+  });
+
+  describe("requireScope", () => {
+    let claimsReadPermission: { id: string };
+    let clientScopeRole: { id: string };
+    let unlimitedScopeRoleWithClaimsRead: { id: string };
+
+    beforeAll(async () => {
+      // Create claims:read permission
+      claimsReadPermission = await db.permission.upsert({
+        where: {
+          resource_action: {
+            resource: "claims",
+            action: "read",
+          },
+        },
+        update: {},
+        create: {
+          resource: "claims",
+          action: "read",
+        },
+      });
+
+      // Create role with CLIENT scope and claims:read permission
+      clientScopeRole = await db.role.create({
+        data: {
+          name: `${TEST_PREFIX}-client-scope`,
+          displayName: "Client Scope Role",
+          scopeType: ScopeType.CLIENT,
+          permissions: {
+            create: {
+              permissionId: claimsReadPermission.id,
+            },
+          },
+        },
+      });
+
+      // Create role with UNLIMITED scope and claims:read permission
+      unlimitedScopeRoleWithClaimsRead = await db.role.create({
+        data: {
+          name: `${TEST_PREFIX}-unlimited-claims`,
+          displayName: "Unlimited Scope With Claims Read",
+          scopeType: ScopeType.UNLIMITED,
+          permissions: {
+            create: {
+              permissionId: claimsReadPermission.id,
+            },
+          },
+        },
+      });
+    });
+
+    it("returns 403 when user scope is not UNLIMITED", async () => {
+      // Create user with CLIENT scope
+      const clientScopeUser = await db.user.create({
+        data: {
+          email: `${TEST_PREFIX}-client-scope@example.com`,
+          passwordHash: "test-hash",
+          roleId: clientScopeRole.id,
+          isActive: true,
+        },
+      });
+
+      const token = `client-scope-${randomUUID()}`;
+      await db.session.create({
+        data: {
+          tokenHash: hashToken(token),
+          userId: clientScopeUser.id,
+          expiresAt: new Date(Date.now() + 3600000),
+        },
+      });
+
+      // Try to list claim files (requires UNLIMITED scope)
+      const res = await request(app)
+        .get("/api/claims/test-claim-id/files")
+        .set("Cookie", `session=${token}`);
+
+      expect(res.status).toBe(403);
+      expect((res.body as { error: { code: string } }).error.code).toBe("FORBIDDEN");
+    });
+
+    it("allows access when user has UNLIMITED scope", async () => {
+      // Create user with UNLIMITED scope and claims:read permission
+      const unlimitedUser = await db.user.create({
+        data: {
+          email: `${TEST_PREFIX}-unlimited-scope@example.com`,
+          passwordHash: "test-hash",
+          roleId: unlimitedScopeRoleWithClaimsRead.id,
+          isActive: true,
+        },
+      });
+
+      const token = `unlimited-scope-${randomUUID()}`;
+      await db.session.create({
+        data: {
+          tokenHash: hashToken(token),
+          userId: unlimitedUser.id,
+          expiresAt: new Date(Date.now() + 3600000),
+        },
+      });
+
+      // Try to list claim files
+      // Should pass auth, permission, and scope checks
+      // Will fail with 404 (claim not found) which is expected
+      const res = await request(app)
+        .get("/api/claims/test-claim-id/files")
+        .set("Cookie", `session=${token}`);
+
+      // Should not be auth/permission/scope error
       expect(res.status).not.toBe(401);
       expect(res.status).not.toBe(403);
     });

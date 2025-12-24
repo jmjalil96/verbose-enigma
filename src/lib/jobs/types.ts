@@ -8,6 +8,10 @@ import type { Job } from "bullmq";
 export const JobType = {
   EMAIL_SEND_INVITE: "email.sendInvite",
   EMAIL_SEND_PASSWORD_RESET: "email.sendPasswordReset",
+  EMAIL_CLAIM_CREATED: "email.claimCreated",
+  CLAIM_FILES_MIGRATE: "claim.filesMigrate",
+  CLAIM_FILE_VERIFY: "claim.fileVerify",
+  CLAIM_FILE_DELETE: "claim.fileDelete",
 } as const;
 
 export type JobTypeName = (typeof JobType)[keyof typeof JobType];
@@ -24,6 +28,21 @@ export const jobPayloadSchemas = {
   [JobType.EMAIL_SEND_PASSWORD_RESET]: z.object({
     userId: z.string(),
     token: z.string(),
+  }),
+  [JobType.EMAIL_CLAIM_CREATED]: z.object({
+    claimId: z.string(),
+    affiliateId: z.string(),
+  }),
+  [JobType.CLAIM_FILES_MIGRATE]: z.object({
+    claimId: z.string(),
+    clientId: z.string(),
+  }),
+  [JobType.CLAIM_FILE_VERIFY]: z.object({
+    fileId: z.string(),
+  }),
+  [JobType.CLAIM_FILE_DELETE]: z.object({
+    fileId: z.string(),
+    targetKey: z.string(),
   }),
 } as const satisfies Record<string, z.ZodType>;
 

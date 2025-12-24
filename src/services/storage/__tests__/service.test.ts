@@ -20,6 +20,9 @@ vi.mock("@aws-sdk/client-s3", () => {
     DeleteObjectCommand: class MockDeleteObjectCommand {
       constructor(public input: unknown) {}
     },
+    CopyObjectCommand: class MockCopyObjectCommand {
+      constructor(public input: unknown) {}
+    },
   };
 });
 
@@ -189,7 +192,7 @@ describe("Storage Service", () => {
           input: {
             Bucket: "test-bucket",
             Key: "uploads/test.txt",
-            Body: expect.any(Buffer),
+            Body: expect.any(Buffer) as Buffer,
             ContentType: "text/plain",
             Metadata: { userId: "123" },
           },
@@ -246,6 +249,28 @@ describe("Storage Service", () => {
 
       await expect(downloadStream("empty-file.txt")).rejects.toThrow(
         "Empty response for key: empty-file.txt"
+      );
+    });
+  });
+
+  describe("copyFile", () => {
+    it("calls S3Client.send with correct CopyObjectCommand params", async () => {
+      mockSend.mockResolvedValue({});
+      const { copyFile } = await import("../service.js");
+
+      await copyFile({
+        sourceKey: "temp/claims/user1/session1/file1.pdf",
+        destinationKey: "clients/client1/claims/claim1/file1.pdf",
+      });
+
+      expect(mockSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: {
+            Bucket: "test-bucket",
+            CopySource: "test-bucket/temp/claims/user1/session1/file1.pdf",
+            Key: "clients/client1/claims/claim1/file1.pdf",
+          },
+        }),
       );
     });
   });

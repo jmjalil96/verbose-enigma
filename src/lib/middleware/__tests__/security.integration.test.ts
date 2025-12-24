@@ -95,8 +95,8 @@ describe("Security Middleware", () => {
       const res1 = await request(app).post("/api/auth/login").send({});
       const res2 = await request(app).post("/api/auth/login").send({});
 
-      const remaining1 = parseInt(res1.headers["ratelimit-remaining"] as string, 10);
-      const remaining2 = parseInt(res2.headers["ratelimit-remaining"] as string, 10);
+      const remaining1 = parseInt(String(res1.headers["ratelimit-remaining"]), 10);
+      const remaining2 = parseInt(String(res2.headers["ratelimit-remaining"]), 10);
 
       // Second request should have lower remaining count
       expect(remaining2).toBeLessThan(remaining1);
@@ -112,8 +112,8 @@ describe("Security Middleware", () => {
       // Should parse JSON and return either validation error or auth error
       // (not a parse error or internal error)
       expect([400, 401]).toContain(res.status);
-      expect(res.body.error).toBeDefined();
-      expect(res.body.error.code).not.toBe("INTERNAL_ERROR");
+      expect((res.body as { error?: unknown }).error).toBeDefined();
+      expect((res.body as { error: { code: string } }).error.code).not.toBe("INTERNAL_ERROR");
     });
 
     it("rejects invalid JSON with error", async () => {
@@ -125,7 +125,7 @@ describe("Security Middleware", () => {
       // Express rejects malformed JSON with 4xx or 5xx
       // The exact status depends on error handler configuration
       expect(res.status).toBeGreaterThanOrEqual(400);
-      expect(res.body.error).toBeDefined();
+      expect((res.body as { error?: unknown }).error).toBeDefined();
     });
 
     it("accepts requests without body for GET endpoints", async () => {

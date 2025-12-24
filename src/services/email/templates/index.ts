@@ -4,3 +4,7 @@ export {
   passwordResetEmail,
   type PasswordResetEmailData,
 } from "./password-reset.js";
+export {
+  claimCreatedEmail,
+  type ClaimCreatedEmailData,
+} from "./claim-created.js";

@@ -4,9 +4,12 @@ import type { JobTypeName, JobPayload, EnqueueOptions } from "./types.js";
 
 const QUEUE_NAME = "jobs";
 
+/** Default number of job attempts before failure */
+export const DEFAULT_JOB_ATTEMPTS = 3;
+
 /** Default job options */
 const defaultJobOptions: JobsOptions = {
-  attempts: 3,
+  attempts: DEFAULT_JOB_ATTEMPTS,
   backoff: {
     type: "exponential",
     delay: 1000,

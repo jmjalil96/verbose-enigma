@@ -112,9 +112,9 @@ describe("Email Handlers", () => {
       expect(mockSend).toHaveBeenCalledWith(
         expect.objectContaining({
           to: invitation.email,
-          subject: expect.stringContaining("Email Test Role"),
-          html: expect.stringContaining(token),
-          text: expect.stringContaining(token),
+          subject: expect.stringContaining("Email Test Role") as string,
+          html: expect.stringContaining(token) as string,
+          text: expect.stringContaining(token) as string,
         })
       );
     });
@@ -137,8 +137,8 @@ describe("Email Handlers", () => {
 
       expect(mockSend).toHaveBeenCalledWith(
         expect.objectContaining({
-          html: expect.stringContaining(`/invite/${token}`),
-          text: expect.stringContaining(`/invite/${token}`),
+          html: expect.stringContaining(`/invite/${token}`) as string,
+          text: expect.stringContaining(`/invite/${token}`) as string,
         })
       );
     });
@@ -233,9 +233,9 @@ describe("Email Handlers", () => {
       expect(mockSend).toHaveBeenCalledWith(
         expect.objectContaining({
           to: testUser.email,
-          subject: expect.stringContaining("password"),
-          html: expect.stringContaining(token),
-          text: expect.stringContaining(token),
+          subject: expect.stringContaining("password") as string,
+          html: expect.stringContaining(token) as string,
+          text: expect.stringContaining(token) as string,
         })
       );
     });
@@ -257,8 +257,8 @@ describe("Email Handlers", () => {
 
       expect(mockSend).toHaveBeenCalledWith(
         expect.objectContaining({
-          html: expect.stringContaining(`/reset-password/${token}`),
-          text: expect.stringContaining(`/reset-password/${token}`),
+          html: expect.stringContaining(`/reset-password/${token}`) as string,
+          text: expect.stringContaining(`/reset-password/${token}`) as string,
         })
       );
     });

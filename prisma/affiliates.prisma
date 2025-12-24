@@ -59,6 +59,14 @@ model Affiliate {
 
   invitation Invitation?
 
+  // Claims (as policy holder or patient)
+  claimsAsAffiliate Claim[] @relation("ClaimAffiliate")
+  claimsAsPatient   Claim[] @relation("ClaimPatient")
+
+  // Policy enrollments
+  enrollments          PolicyEnrollment[]
+  enrolledAsDependent  EnrollmentDependent[] @relation("EnrolledAsDependent")
+
   @@index([clientId])
   @@index([userId])
   @@index([primaryAffiliateId])

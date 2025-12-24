@@ -13,8 +13,8 @@ import {
 const { enqueueMock } = vi.hoisted(() => ({
   enqueueMock: vi.fn().mockResolvedValue(undefined),
 }));
-vi.mock("../../../lib/jobs/index.js", async () => {
-  const actual = await vi.importActual<any>("../../../lib/jobs/index.js");
+vi.mock("../../../lib/jobs/index.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../lib/jobs/index.js")>();
   return { ...actual, enqueue: enqueueMock };
 });
 
@@ -45,13 +45,13 @@ describe("Auth - password reset", () => {
       .post("/api/auth/password-reset/request")
       .send({ email: user.email });
     expect(known.status).toBe(200);
-    expect(known.body.message).toBeDefined();
+    expect((known.body as { message: string }).message).toBeDefined();
 
     const unknown = await request(app)
       .post("/api/auth/password-reset/request")
       .send({ email: `${prefix}-unknown@example.com` });
     expect(unknown.status).toBe(200);
-    expect(unknown.body.message).toBe(known.body.message);
+    expect((unknown.body as { message: string }).message).toBe((known.body as { message: string }).message);
 
     expect(enqueueMock).toHaveBeenCalledTimes(1);
   });
@@ -67,18 +67,18 @@ describe("Auth - password reset", () => {
       .post("/api/auth/password-reset/request")
       .send({ email: user.email });
 
-    const payload = enqueueMock.mock.calls[0]?.[1] as { userId: string; token: string };
+    const payload = (enqueueMock.mock.calls[0] as unknown[])[1] as { userId: string; token: string };
     const token = payload.token;
 
     const validate = await request(app).get(`/api/auth/password-reset/${token}`);
     expect(validate.status).toBe(200);
-    expect(validate.body.expiresAt).toBeDefined();
+    expect((validate.body as { expiresAt: string }).expiresAt).toBeDefined();
 
     const confirm = await request(app)
       .post("/api/auth/password-reset/confirm")
       .send({ token, password: "BrandNewPassword123!" });
     expect(confirm.status).toBe(200);
-    expect(confirm.body.message).toContain("successful");
+    expect((confirm.body as { message: string }).message).toContain("successful");
 
     // Token cannot be reused
     const confirmAgain = await request(app)
@@ -99,12 +99,12 @@ describe("Auth - password reset", () => {
     await request(app)
       .post("/api/auth/password-reset/request")
       .send({ email: user.email });
-    const token1 = (enqueueMock.mock.calls[0]?.[1] as { token: string }).token;
+    const token1 = ((enqueueMock.mock.calls[0] as unknown[])[1] as { token: string }).token;
 
     await request(app)
       .post("/api/auth/password-reset/request")
       .send({ email: user.email });
-    const token2 = (enqueueMock.mock.calls[1]?.[1] as { token: string }).token;
+    const token2 = ((enqueueMock.mock.calls[1] as unknown[])[1] as { token: string }).token;
 
     expect(token2).not.toBe(token1);
 

@@ -8,7 +8,7 @@ let capturedProcessor: ((job: Job) => Promise<void>) | null = null;
 let capturedOptions: unknown;
 let capturedQueueName: string | null = null;
 
-vi.mock("bullmq", async () => {
+vi.mock("bullmq", () => {
   return {
     Worker: class MockWorker {
       constructor(
@@ -32,7 +32,7 @@ vi.mock("../connection.js", () => ({
 
 const processJobSpy = vi.fn().mockResolvedValue(undefined);
 vi.mock("../processors.js", () => ({
-  processJob: (job: Job) => processJobSpy(job),
+  processJob: (job: Job) => processJobSpy(job) as Promise<void>,
 }));
 
 describe("jobs worker", () => {
@@ -52,9 +52,9 @@ describe("jobs worker", () => {
     expect(capturedQueueName).toBe("jobs");
     expect(capturedOptions).toEqual(
       expect.objectContaining({
-        connection: expect.objectContaining({ __conn: true }),
+        connection: expect.objectContaining({ __conn: true }) as unknown,
         concurrency: 5,
-      }),
+      }) as unknown,
     );
     expect(mockOn).toHaveBeenCalled(); // registers events
   });
@@ -66,7 +66,7 @@ describe("jobs worker", () => {
     expect(capturedOptions).toEqual(
       expect.objectContaining({
         concurrency: 9,
-      }),
+      }) as unknown,
     );
   });
 
