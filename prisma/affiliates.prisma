@@ -64,8 +64,11 @@ model Affiliate {
   claimsAsPatient   Claim[] @relation("ClaimPatient")
 
   // Policy enrollments
-  enrollments          PolicyEnrollment[]
-  enrolledAsDependent  EnrollmentDependent[] @relation("EnrolledAsDependent")
+  enrollments         PolicyEnrollment[]
+  enrolledAsDependent EnrollmentDependent[] @relation("EnrolledAsDependent")
+
+  // Files
+  files AffiliateFile[]
 
   @@index([clientId])
   @@index([userId])
@@ -74,4 +77,26 @@ model Affiliate {
   @@index([lastName, firstName])
   @@index([isActive])
   @@map("affiliates")
+}
+
+model AffiliateFile {
+  id          String    @id @default(cuid())
+  affiliateId String
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  fileName    String
+  fileSize    Int
+  contentType String
+  fileKey     String @unique
+
+  deletedAt DateTime?
+
+  createdById String
+  createdBy   User     @relation("AffiliateFileCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([affiliateId])
+  @@index([createdById])
+  @@index([deletedAt])
+  @@map("affiliate_files")
 }

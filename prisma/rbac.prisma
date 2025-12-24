@@ -6,12 +6,12 @@ model Role {
   scopeType    ScopeType
   isPortalRole Boolean   @default(false)
 
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  users        User[]
-  permissions  RolePermission[]
-  invitations  Invitation[]
+  users       User[]
+  permissions RolePermission[]
+  invitations Invitation[]
 
   @@map("roles")
 }
@@ -23,13 +23,13 @@ enum ScopeType {
 }
 
 model Permission {
-  id        String   @id @default(cuid())
-  resource  String
-  action    String
+  id       String @id @default(cuid())
+  resource String
+  action   String
 
   createdAt DateTime @default(now())
 
-  roles     RolePermission[]
+  roles RolePermission[]
 
   @@unique([resource, action])
   @@index([resource])
@@ -40,8 +40,8 @@ model RolePermission {
   roleId       String
   permissionId String
 
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@id([roleId, permissionId])
   @@index([permissionId])

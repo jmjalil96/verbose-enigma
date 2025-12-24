@@ -1,31 +1,31 @@
 model User {
-  id                    String    @id @default(cuid())
-  email                 String    @unique
-  emailVerifiedAt       DateTime?
-  passwordHash          String
+  id              String    @id @default(cuid())
+  email           String    @unique
+  emailVerifiedAt DateTime?
+  passwordHash    String
 
   roleId                String
   sessionsInvalidBefore DateTime?
   isActive              Boolean   @default(true)
 
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  role                  Role      @relation(fields: [roleId], references: [id])
-  sessions              Session[]
-  tokens                VerificationToken[]
+  role     Role                @relation(fields: [roleId], references: [id])
+  sessions Session[]
+  tokens   VerificationToken[]
 
   // Profile relations (exactly one set based on role)
-  affiliate             Affiliate?
-  agent                 Agent?
-  employee              Employee?
-  clientAdmin           ClientAdmin?
+  affiliate   Affiliate?
+  agent       Agent?
+  employee    Employee?
+  clientAdmin ClientAdmin?
 
   // Invitations created by this user
-  createdInvitations    Invitation[]
+  createdInvitations Invitation[]
 
   // Audit logs for this user
-  auditLogs             AuditLog[]
+  auditLogs AuditLog[]
 
   // Claims
   claimsCreated        Claim[]        @relation("ClaimCreator")
@@ -40,28 +40,59 @@ model User {
   pendingClaimFiles PendingClaimFile[] @relation("PendingClaimFileOwner")
   claimFilesCreated ClaimFile[]        @relation("ClaimFileCreator")
 
+  // Invoices
+  invoicesCreated          Invoice[]                 @relation("InvoiceCreator")
+  invoicesUpdated          Invoice[]                 @relation("InvoiceUpdater")
+  invoicesReconciled       Invoice[]                 @relation("InvoiceReconciler")
+  invoiceHistoryCreated    InvoiceHistory[]          @relation("InvoiceHistoryCreator")
+  invoicePoliciesAdded     InvoicePolicy[]           @relation("InvoicePolicyAdder")
+  discrepancyCausesCreated InvoiceDiscrepancyCause[] @relation("DiscrepancyCauseCreator")
+  discrepancyCausesDeleted InvoiceDiscrepancyCause[] @relation("DiscrepancyCauseDeleter")
+
+  // Tickets
+  ticketsReported    Ticket[]            @relation("TicketReporter")
+  ticketsCreated     Ticket[]            @relation("TicketCreator")
+  ticketsAssigned    Ticket[]            @relation("TicketAssignee")
+  ticketMessages     TicketMessage[]
+  ticketFilesCreated TicketFile[]        @relation("TicketFileCreator")
+  pendingTicketFiles PendingTicketFile[] @relation("PendingTicketFileOwner")
+
+  // Documents
+  documentsCreated      Document[]            @relation("DocumentCreator")
+  documentFilesCreated  DocumentFile[]        @relation("DocumentFileCreator")
+  documentAccessGranted DocumentAccess[]      @relation("DocumentAccessGranter")
+  pendingDocumentFiles  PendingDocumentFile[] @relation("PendingDocumentFileOwner")
+
+  // Entity Files (direct upload)
+  invoiceFilesCreated    InvoiceFile[]    @relation("InvoiceFileCreator")
+  insurerFilesCreated    InsurerFile[]    @relation("InsurerFileCreator")
+  policyFilesCreated     PolicyFile[]     @relation("PolicyFileCreator")
+  enrollmentFilesCreated EnrollmentFile[] @relation("EnrollmentFileCreator")
+  clientFilesCreated     ClientFile[]     @relation("ClientFileCreator")
+  affiliateFilesCreated  AffiliateFile[]  @relation("AffiliateFileCreator")
+
   @@index([email])
   @@index([roleId])
   @@map("users")
 }
 
 model Session {
-  id           String    @id @default(cuid())
-  userId       String
+  id     String @id @default(cuid())
+  userId String
 
   // store SHA-256 hash of the random cookie token
-  tokenHash    String    @unique
+  tokenHash String @unique
 
-  expiresAt    DateTime
-  revokedAt    DateTime?
+  expiresAt DateTime
+  revokedAt DateTime?
 
-  ipAddress    String?
-  userAgent    String?
+  ipAddress String?
+  userAgent String?
 
-  createdAt    DateTime  @default(now())
-  lastActiveAt DateTime  @default(now())
+  createdAt    DateTime @default(now())
+  lastActiveAt DateTime @default(now())
 
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
@@ -78,7 +109,7 @@ model VerificationToken {
   usedAt    DateTime?
   createdAt DateTime  @default(now())
 
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, type])
   @@index([expiresAt])

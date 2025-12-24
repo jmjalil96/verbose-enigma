@@ -64,6 +64,8 @@ model Insurer {
   updatedAt DateTime @updatedAt
 
   policies Policy[]
+  invoices Invoice[]
+  files    InsurerFile[]
 
   @@index([isActive])
   @@map("insurers")
@@ -100,9 +102,12 @@ model Policy {
   cancellationReason String?
   cancelledAt        DateTime?
 
-  enrollments PolicyEnrollment[]
-  claims      Claim[]
-  history     PolicyHistory[]
+  enrollments       PolicyEnrollment[]
+  claims            Claim[]
+  history           PolicyHistory[]
+  invoicePolicies   InvoicePolicy[]
+  discrepancyCauses InvoiceDiscrepancyCause[]
+  files             PolicyFile[]
 
   @@unique([policyNumber, insurerId])
   @@index([policyNumber])
@@ -131,7 +136,9 @@ model PolicyEnrollment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  dependents EnrollmentDependent[]
+  dependents        EnrollmentDependent[]
+  discrepancyCauses InvoiceDiscrepancyCause[]
+  files             EnrollmentFile[]
 
   @@unique([policyId, affiliateId, startDate])
   @@index([policyId])
@@ -180,4 +187,70 @@ model PolicyHistory {
   @@index([createdById])
   @@index([createdAt])
   @@map("policy_history")
+}
+
+model InsurerFile {
+  id        String  @id @default(cuid())
+  insurerId String
+  insurer   Insurer @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+
+  fileName    String
+  fileSize    Int
+  contentType String
+  fileKey     String @unique
+
+  deletedAt DateTime?
+
+  createdById String
+  createdBy   User     @relation("InsurerFileCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([insurerId])
+  @@index([createdById])
+  @@index([deletedAt])
+  @@map("insurer_files")
+}
+
+model PolicyFile {
+  id       String @id @default(cuid())
+  policyId String
+  policy   Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  fileName    String
+  fileSize    Int
+  contentType String
+  fileKey     String @unique
+
+  deletedAt DateTime?
+
+  createdById String
+  createdBy   User     @relation("PolicyFileCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([policyId])
+  @@index([createdById])
+  @@index([deletedAt])
+  @@map("policy_files")
+}
+
+model EnrollmentFile {
+  id           String           @id @default(cuid())
+  enrollmentId String
+  enrollment   PolicyEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  fileName    String
+  fileSize    Int
+  contentType String
+  fileKey     String @unique
+
+  deletedAt DateTime?
+
+  createdById String
+  createdBy   User     @relation("EnrollmentFileCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([enrollmentId])
+  @@index([createdById])
+  @@index([deletedAt])
+  @@map("enrollment_files")
 }

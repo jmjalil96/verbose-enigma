@@ -1,0 +1,137 @@
+// =============================================================================
+// Enums
+// =============================================================================
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_ON_CLIENT
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TicketFileStatus {
+  PENDING
+  READY
+  FAILED
+}
+
+// =============================================================================
+// Models
+// =============================================================================
+
+model PendingTicketFile {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("PendingTicketFileOwner", fields: [userId], references: [id], onDelete: Cascade)
+
+  sessionKey  String
+  fileName    String
+  fileKey     String @unique
+  fileSize    Int
+  contentType String
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId, sessionKey])
+  @@index([expiresAt])
+  @@map("pending_ticket_files")
+}
+
+model Ticket {
+  id           String @id @default(cuid())
+  ticketNumber Int    @unique
+
+  subject  String
+  status   TicketStatus   @default(OPEN)
+  priority TicketPriority @default(NORMAL)
+  category String?
+
+  clientId       String
+  client         Client  @relation(fields: [clientId], references: [id])
+  relatedClaimId String?
+  relatedClaim   Claim?  @relation(fields: [relatedClaimId], references: [id])
+
+  reporterId   String?
+  reporter     User?   @relation("TicketReporter", fields: [reporterId], references: [id])
+  createdById  String
+  createdBy    User    @relation("TicketCreator", fields: [createdById], references: [id])
+  assignedToId String?
+  assignedTo   User?   @relation("TicketAssignee", fields: [assignedToId], references: [id])
+
+  closedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages TicketMessage[]
+
+  @@index([clientId])
+  @@index([relatedClaimId])
+  @@index([reporterId])
+  @@index([createdById])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([priority])
+  @@index([category])
+  @@index([createdAt])
+  @@map("tickets")
+}
+
+model TicketMessage {
+  id String @id @default(cuid())
+
+  message String
+
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  files TicketFile[]
+
+  @@index([ticketId])
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("ticket_messages")
+}
+
+model TicketFile {
+  id        String        @id @default(cuid())
+  messageId String
+  message   TicketMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  fileName    String
+  fileSize    Int
+  contentType String
+
+  sourceKey    String
+  targetKey    String?
+  status       TicketFileStatus @default(PENDING)
+  errorMessage String?
+  migratedAt   DateTime?
+
+  deletedAt DateTime?
+
+  createdById String
+  createdBy   User     @relation("TicketFileCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([messageId])
+  @@index([status])
+  @@index([createdById])
+  @@index([deletedAt])
+  @@map("ticket_files")
+}

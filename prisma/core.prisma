@@ -1,7 +1,7 @@
 model Client {
-  id        String   @id @default(cuid())
-  name      String
-  isActive  Boolean  @default(true)
+  id       String  @id @default(cuid())
+  name     String
+  isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -17,7 +17,41 @@ model Client {
   // Policies
   policies Policy[]
 
+  // Invoices
+  invoices Invoice[]
+
+  // Tickets
+  tickets Ticket[]
+
+  // Documents
+  documentAccess DocumentAccess[]
+
+  // Files
+  files ClientFile[]
+
   @@map("clients")
+}
+
+model ClientFile {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  fileName    String
+  fileSize    Int
+  contentType String
+  fileKey     String @unique
+
+  deletedAt DateTime?
+
+  createdById String
+  createdBy   User     @relation("ClientFileCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([clientId])
+  @@index([createdById])
+  @@index([deletedAt])
+  @@map("client_files")
 }
 
 model GlobalCounter {

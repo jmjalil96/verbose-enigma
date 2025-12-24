@@ -1,0 +1,108 @@
+// =============================================================================
+// Enums
+// =============================================================================
+
+enum DocumentFileStatus {
+  PENDING
+  READY
+  FAILED
+}
+
+// =============================================================================
+// Models
+// =============================================================================
+
+model PendingDocumentFile {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("PendingDocumentFileOwner", fields: [userId], references: [id], onDelete: Cascade)
+
+  sessionKey  String
+  fileName    String
+  fileKey     String @unique
+  fileSize    Int
+  contentType String
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId, sessionKey])
+  @@index([expiresAt])
+  @@map("pending_document_files")
+}
+
+model Document {
+  id             String @id @default(cuid())
+  documentNumber Int    @unique
+
+  title       String
+  description String?
+  category    String?
+  tags        String[]
+
+  isPublic Boolean @default(false)
+  isActive Boolean @default(true)
+
+  createdById String
+  createdBy   User   @relation("DocumentCreator", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  files        DocumentFile[]
+  clientAccess DocumentAccess[]
+
+  @@index([category])
+  @@index([isPublic])
+  @@index([isActive])
+  @@index([createdById])
+  @@index([createdAt])
+  @@map("documents")
+}
+
+model DocumentFile {
+  id         String   @id @default(cuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  fileName    String
+  fileSize    Int
+  contentType String
+
+  sourceKey    String
+  targetKey    String?
+  status       DocumentFileStatus @default(PENDING)
+  errorMessage String?
+  migratedAt   DateTime?
+
+  deletedAt DateTime?
+
+  createdById String
+  createdBy   User     @relation("DocumentFileCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([documentId])
+  @@index([status])
+  @@index([createdById])
+  @@index([deletedAt])
+  @@map("document_files")
+}
+
+model DocumentAccess {
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  grantedById String
+  grantedBy   User   @relation("DocumentAccessGranter", fields: [grantedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@id([documentId, clientId])
+  @@index([documentId])
+  @@index([clientId])
+  @@index([grantedById])
+  @@map("document_access")
+}

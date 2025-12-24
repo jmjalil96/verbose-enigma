@@ -1,0 +1,193 @@
+// =============================================================================
+// Enums
+// =============================================================================
+
+enum InvoiceStatus {
+  PENDING
+  VALIDATED
+  DISCREPANCY
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING_PAYMENT
+  PAID
+}
+
+enum DiscrepancyType {
+  EXTRA_BILLED
+  MISSING_BILLED
+  RATE_ADJUSTMENT
+  PRORATION
+  CREDIT
+  OTHER
+}
+
+// =============================================================================
+// Models
+// =============================================================================
+
+model Invoice {
+  id              String @id @default(cuid())
+  invoiceSequence Int    @unique @default(autoincrement())
+  invoiceNumber   String
+
+  insurerId String
+  insurer   Insurer @relation(fields: [insurerId], references: [id])
+  clientId  String
+  client    Client  @relation(fields: [clientId], references: [id])
+
+  status        InvoiceStatus @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING_PAYMENT)
+
+  billingPeriodStart DateTime @db.Date
+  billingPeriodEnd   DateTime @db.Date
+
+  // === ACTUAL (from insurer, user input) ===
+  actualAmount Decimal  @db.Decimal(12, 2)
+  actualCount  Int
+  taxAmount    Decimal? @db.Decimal(12, 2)
+
+  issueDate   DateTime  @db.Date
+  dueDate     DateTime? @db.Date
+  paymentDate DateTime? @db.Date
+  paymentNote String?
+
+  // === EXPECTED (system-calculated via validate endpoint) ===
+  expectedAmount Decimal? @db.Decimal(12, 2)
+  expectedCount  Int?
+
+  // === DISCREPANCY SUMMARY (system-calculated via validate endpoint) ===
+  totalDiscrepancyAmount     Decimal? @db.Decimal(12, 2)
+  totalDiscrepancyCountDelta Int?
+
+  // === RECONCILIATION ===
+  reconciliationNote String?
+  reconciledAt       DateTime?
+  reconciledById     String?
+  reconciledBy       User?     @relation("InvoiceReconciler", fields: [reconciledById], references: [id])
+
+  // === TRACKING ===
+  createdById String
+  createdBy   User    @relation("InvoiceCreator", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   User?   @relation("InvoiceUpdater", fields: [updatedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  policies          InvoicePolicy[]
+  discrepancyCauses InvoiceDiscrepancyCause[]
+  history           InvoiceHistory[]
+  files             InvoiceFile[]
+
+  @@index([invoiceNumber])
+  @@index([insurerId])
+  @@index([clientId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([issueDate])
+  @@index([dueDate])
+  @@index([createdById])
+  @@index([updatedById])
+  @@map("invoices")
+}
+
+model InvoiceHistory {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  fromStatus InvoiceStatus?
+  toStatus   InvoiceStatus
+
+  fromPaymentStatus PaymentStatus?
+  toPaymentStatus   PaymentStatus?
+
+  reason String?
+  notes  String?
+
+  createdById String
+  createdBy   User     @relation("InvoiceHistoryCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([toStatus])
+  @@index([createdById])
+  @@index([createdAt])
+  @@map("invoice_history")
+}
+
+model InvoicePolicy {
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  policyId  String
+  policy    Policy  @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  addedAt   DateTime @default(now())
+  addedById String
+  addedBy   User     @relation("InvoicePolicyAdder", fields: [addedById], references: [id])
+
+  @@id([invoiceId, policyId])
+  @@index([invoiceId])
+  @@index([policyId])
+  @@index([addedById])
+  @@map("invoice_policies")
+}
+
+model InvoiceDiscrepancyCause {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  type DiscrepancyType
+
+  enrollmentId String?
+  enrollment   PolicyEnrollment? @relation(fields: [enrollmentId], references: [id])
+
+  policyId         String?
+  policy           Policy? @relation(fields: [policyId], references: [id])
+  externalMemberId String?
+
+  amount     Decimal @db.Decimal(12, 2)
+  countDelta Int     @default(1)
+  note       String?
+
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   User?     @relation("DiscrepancyCauseDeleter", fields: [deletedById], references: [id])
+
+  createdAt   DateTime @default(now())
+  createdById String
+  createdBy   User     @relation("DiscrepancyCauseCreator", fields: [createdById], references: [id])
+
+  @@index([invoiceId])
+  @@index([enrollmentId])
+  @@index([policyId])
+  @@index([type])
+  @@index([createdById])
+  @@index([deletedAt])
+  @@map("invoice_discrepancy_causes")
+}
+
+model InvoiceFile {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  fileName    String
+  fileSize    Int
+  contentType String
+  fileKey     String @unique
+
+  deletedAt DateTime?
+
+  createdById String
+  createdBy   User     @relation("InvoiceFileCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([createdById])
+  @@index([deletedAt])
+  @@map("invoice_files")
+}
