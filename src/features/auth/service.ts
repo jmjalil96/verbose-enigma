@@ -249,10 +249,17 @@ export async function validateRoleExists(roleId: string): Promise<void> {
 type UserWithRole = NonNullable<Awaited<ReturnType<typeof findUserByEmail>>>;
 
 export function buildLoginResponse(user: UserWithRole) {
+  const profile =
+    user.employee ?? user.agent ?? user.clientAdmin ?? user.affiliate;
+  const name = profile
+    ? { firstName: profile.firstName, lastName: profile.lastName }
+    : null;
+
   return {
     id: user.id,
     email: user.email,
     emailVerifiedAt: user.emailVerifiedAt,
+    name,
     role: {
       id: user.role.id,
       name: user.role.name,
@@ -269,6 +276,7 @@ interface AcceptedUser {
   id: string;
   email: string;
   emailVerifiedAt: Date | null;
+  name: { firstName: string; lastName: string } | null;
   role: {
     id: string;
     name: string;
@@ -282,6 +290,7 @@ export function buildAcceptResponse(user: AcceptedUser) {
     id: user.id,
     email: user.email,
     emailVerifiedAt: user.emailVerifiedAt,
+    name: user.name,
     role: {
       id: user.role.id,
       name: user.role.name,
@@ -373,6 +382,7 @@ export interface AcceptInvitationResult {
     id: string;
     email: string;
     emailVerifiedAt: Date | null;
+    name: { firstName: string; lastName: string } | null;
     role: {
       id: string;
       name: string;

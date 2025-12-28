@@ -200,20 +200,17 @@ function buildClaimsWhereClause(
 export async function listClaimsUseCase(
   user: SessionUser,
   query: ListClaimsQuery,
-): Promise<{ claims: ClaimListItem[]; total?: number }> {
+): Promise<{ claims: ClaimListItem[]; total: number; page: number; limit: number }> {
   const scopeFilters = await getClaimsScopeFilters(user, query.clientId);
   const where = buildClaimsWhereClause({ ...query, ...scopeFilters });
-
-  // Only apply cursor when we aren't doing exact claimNumber match
-  const cursor =
-    typeof where.claimNumber === "number" ? undefined : query.cursor;
+  const offset = (query.page - 1) * query.limit;
 
   const [claims, total] = await Promise.all([
-    findClaims({ where, cursor, limit: query.limit }),
-    query.includeTotal ? countClaims(where) : undefined,
+    findClaims({ where, offset, limit: query.limit }),
+    countClaims(where),
   ]);
 
-  return { claims, total };
+  return { claims, total, page: query.page, limit: query.limit };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

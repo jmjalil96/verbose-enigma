@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 import {
   AuditAction,
-  ScopeType,
   type ClaimStatus,
+  type PolicyStatus,
   type Prisma,
+  ScopeType,
 } from "@prisma/client";
 import { db } from "../../../lib/db.js";
 
@@ -135,6 +136,7 @@ export async function createPolicy(params: {
   prefix: string;
   clientId: string;
   insurerId: string;
+  status?: PolicyStatus;
 }) {
   const startDate = new Date("2025-01-01");
   const endDate = new Date("2026-01-01");
@@ -144,10 +146,11 @@ export async function createPolicy(params: {
       policyNumber: `${params.prefix}-policy-${randomUUID().slice(0, 8)}`,
       clientId: params.clientId,
       insurerId: params.insurerId,
+      status: params.status ?? "ACTIVE",
       startDate,
       endDate,
     },
-    select: { id: true, policyNumber: true, clientId: true },
+    select: { id: true, policyNumber: true, clientId: true, status: true },
   });
 }
 

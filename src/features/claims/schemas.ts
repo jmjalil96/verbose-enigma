@@ -31,8 +31,8 @@ export type GetClaimParams = z.infer<typeof getClaimSchema.params>;
 
 export const listClaimsSchema = {
   query: z.object({
-    // Cursor pagination (claimNumber-based)
-    cursor: z.coerce.number().int().positive().optional(),
+    // Offset pagination
+    page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(20),
 
     // Relationship filters
@@ -71,9 +71,6 @@ export const listClaimsSchema = {
 
     // Search (claimNumber, diagnosis, affiliate/patient/client name)
     search: z.string().max(100).optional(),
-
-    // Include total count (optional for performance)
-    includeTotal: z.coerce.boolean().default(false),
   }),
 };
 

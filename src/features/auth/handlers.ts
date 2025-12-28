@@ -166,6 +166,7 @@ export function me(
     emailVerifiedAt: user.emailVerifiedAt
       ? user.emailVerifiedAt.toISOString()
       : null,
+    name: user.name,
     role: user.role,
     permissions: user.permissions,
   });

@@ -15,10 +15,11 @@ export async function listClaimAuditUseCase(
     throw new NotFoundError("Claim not found");
   }
 
+  const offset = (query.page - 1) * query.limit;
   const [logs, total] = await Promise.all([
-    getClaimAuditLogs(claimId, { cursor: query.cursor, limit: query.limit }),
-    query.includeTotal ? countClaimAuditLogs(claimId) : undefined,
+    getClaimAuditLogs(claimId, { offset, limit: query.limit }),
+    countClaimAuditLogs(claimId),
   ]);
 
-  return { logs, total };
+  return { logs, total, page: query.page, limit: query.limit };
 }

@@ -1,10 +1,11 @@
-export interface CursorPaginationMeta<TCursor = number> {
-  nextCursor: TCursor | null;
-  hasMore: boolean;
-  total?: number;
+export interface OffsetPaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
-export interface PaginatedResponse<T, TCursor = number> {
+export interface OffsetPaginatedResponse<T> {
   data: T[];
-  pagination: CursorPaginationMeta<TCursor>;
+  pagination: OffsetPaginationMeta;
 }

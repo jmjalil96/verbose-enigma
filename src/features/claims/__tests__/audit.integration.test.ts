@@ -186,7 +186,7 @@ describe("claims audit (integration)", () => {
 
     it("pagination works correctly", async () => {
       const first = await request(app)
-        .get(`/api/claims/${claim.id}/audit?limit=2&includeTotal=true`)
+        .get(`/api/claims/${claim.id}/audit?page=1&limit=2`)
         .set("Cookie", unlimitedCookie);
 
       expect(first.status).toBe(200);
@@ -194,33 +194,37 @@ describe("claims audit (integration)", () => {
       const firstBody = first.body as {
         data: { id: string }[];
         pagination: {
-          nextCursor: string | null;
-          hasMore: boolean;
-          total?: number;
+          page: number;
+          limit: number;
+          total: number;
+          totalPages: number;
         };
       };
 
       expect(firstBody.data.length).toBe(2);
-      expect(firstBody.pagination.hasMore).toBe(true);
-      expect(firstBody.pagination.nextCursor).toBeTruthy();
+      expect(firstBody.pagination.page).toBe(1);
+      expect(firstBody.pagination.limit).toBe(2);
       expect(firstBody.pagination.total).toBe(3);
-      const { nextCursor } = firstBody.pagination;
-      if (nextCursor === null) throw new Error("Cursor missing");
-      const cursor: string = nextCursor;
+      expect(firstBody.pagination.totalPages).toBe(2);
 
       const second = await request(app)
-        .get(`/api/claims/${claim.id}/audit?limit=2&cursor=${cursor}`)
+        .get(`/api/claims/${claim.id}/audit?page=2&limit=2`)
         .set("Cookie", unlimitedCookie);
 
       expect(second.status).toBe(200);
       const secondBody = second.body as {
         data: { id: string }[];
-        pagination: { nextCursor: string | null; hasMore: boolean };
+        pagination: {
+          page: number;
+          limit: number;
+          total: number;
+          totalPages: number;
+        };
       };
 
       expect(secondBody.data.length).toBe(1);
-      expect(secondBody.pagination.hasMore).toBe(false);
-      expect(secondBody.pagination.nextCursor).toBeNull();
+      expect(secondBody.pagination.page).toBe(2);
+      expect(secondBody.pagination.totalPages).toBe(2);
     });
   });
 });

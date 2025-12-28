@@ -5,6 +5,7 @@ import { asyncHandler } from "../../lib/utils/async-handler.js";
 import { claimAuditRouter } from "./audit/index.js";
 import { filesRouter, claimFilesRouter } from "./files/index.js";
 import { claimInvoicesRouter } from "./invoices/index.js";
+import { lookupsRouter } from "./lookups/index.js";
 import {
   createClaim,
   getClaim,
@@ -27,6 +28,12 @@ export const claimsRouter = Router();
 // ─────────────────────────────────────────────────────────────────────────────
 
 claimsRouter.use("/pending-files", filesRouter);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Lookup endpoints
+// ─────────────────────────────────────────────────────────────────────────────
+
+claimsRouter.use("/lookups", lookupsRouter);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Claim endpoints

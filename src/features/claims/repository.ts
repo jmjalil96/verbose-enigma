@@ -269,18 +269,13 @@ export async function getClaimForUpdate(
 
 export async function findClaims(params: {
   where: Prisma.ClaimWhereInput;
-  cursor?: number;
+  offset: number;
   limit: number;
 }): Promise<ClaimListItem[]> {
-  const where: Prisma.ClaimWhereInput = { ...params.where };
-
-  if (params.cursor) {
-    where.claimNumber = { lt: params.cursor };
-  }
-
   return db.claim.findMany({
-    where,
-    take: params.limit + 1,
+    where: params.where,
+    skip: params.offset,
+    take: params.limit,
     orderBy: { claimNumber: "desc" },
     select: CLAIMS_LIST_SELECT,
   });

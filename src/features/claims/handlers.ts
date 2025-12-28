@@ -2,7 +2,7 @@ import { AuditAction, type Prisma } from "@prisma/client";
 import type { NextFunction, Request, Response } from "express";
 import { UnauthorizedError } from "../../lib/errors/index.js";
 import { enqueue, JobType } from "../../lib/jobs/index.js";
-import { buildCursorPagination } from "../../lib/utils/pagination.js";
+import { buildOffsetPagination } from "../../lib/utils/pagination.js";
 import { logAudit } from "../../services/audit/index.js";
 import type {
   CreateClaimBody,
@@ -99,11 +99,11 @@ export async function listClaims(
 
   const query = req.query as unknown as ListClaimsQuery;
 
-  const { claims, total } = await listClaimsUseCase(user, query);
-  const response = buildCursorPagination(claims, query.limit, total);
+  const { claims, total, page, limit } = await listClaimsUseCase(user, query);
+  const response = buildOffsetPagination(claims, page, limit, total);
 
   req.log.info(
-    { total, returned: response.data.length, cursor: query.cursor },
+    { total, returned: response.data.length, page },
     "Claims listed",
   );
 

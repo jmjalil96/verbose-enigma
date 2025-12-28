@@ -16,13 +16,13 @@ export async function getClaimForAuditOps(claimId: string) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface GetClaimAuditLogsParams {
-  cursor?: string;
+  offset: number;
   limit: number;
 }
 
 export async function getClaimAuditLogs(
   claimId: string,
-  { cursor, limit }: GetClaimAuditLogsParams,
+  { offset, limit }: GetClaimAuditLogsParams,
 ) {
   return db.auditLog.findMany({
     where: {
@@ -35,11 +35,8 @@ export async function getClaimAuditLogs(
       ],
     },
     orderBy: { createdAt: "desc" },
-    take: limit + 1, // Fetch one extra to detect hasMore
-    ...(cursor && {
-      cursor: { id: cursor },
-      skip: 1, // Skip the cursor item itself
-    }),
+    skip: offset,
+    take: limit,
     select: {
       id: true,
       action: true,

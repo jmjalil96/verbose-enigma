@@ -56,6 +56,10 @@ export async function findUserByEmail(email: string) {
           },
         },
       },
+      employee: { select: { firstName: true, lastName: true } },
+      agent: { select: { firstName: true, lastName: true } },
+      clientAdmin: { select: { firstName: true, lastName: true } },
+      affiliate: { select: { firstName: true, lastName: true } },
     },
   });
 }
@@ -370,7 +374,28 @@ export async function acceptInvitationTransaction(data: {
       throw new ProfileAlreadyLinkedError();
     }
 
-    // 4. Create session
+    // 4. Fetch profile name
+    const fetchProfileName = async (): Promise<{
+      firstName: string;
+      lastName: string;
+    } | null> => {
+      const select = { firstName: true, lastName: true } as const;
+
+      switch (data.profileType) {
+        case "employee":
+          return tx.employee.findUnique({ where: { id: data.profileId }, select });
+        case "agent":
+          return tx.agent.findUnique({ where: { id: data.profileId }, select });
+        case "clientAdmin":
+          return tx.clientAdmin.findUnique({ where: { id: data.profileId }, select });
+        case "affiliate":
+          return tx.affiliate.findUnique({ where: { id: data.profileId }, select });
+      }
+    };
+
+    const profile = await fetchProfileName();
+
+    // 5. Create session
     await tx.session.create({
       data: {
         userId: user.id,
@@ -381,7 +406,12 @@ export async function acceptInvitationTransaction(data: {
       },
     });
 
-    return { user };
+    return {
+      user: {
+        ...user,
+        name: profile ? { firstName: profile.firstName, lastName: profile.lastName } : null,
+      },
+    };
   });
 }
 

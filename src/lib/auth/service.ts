@@ -43,10 +43,17 @@ export function buildSessionUser(session: SessionWithUser): SessionUser {
   const { user } = session;
   const { role } = user;
 
+  const profile =
+    user.employee ?? user.agent ?? user.clientAdmin ?? user.affiliate;
+  const name = profile
+    ? { firstName: profile.firstName, lastName: profile.lastName }
+    : null;
+
   return {
     id: user.id,
     email: user.email,
     emailVerifiedAt: user.emailVerifiedAt,
+    name,
     role: {
       id: role.id,
       name: role.name,
